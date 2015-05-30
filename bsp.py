@@ -8,6 +8,7 @@ from collections import namedtuple
 
 
 Box = namedtuple('Box', ['top', 'left', 'bottom', 'right'])
+Point = namedtuple('Point', ['x', 'y'])
 
 
 class Dungeon(object):
@@ -15,23 +16,24 @@ class Dungeon(object):
     Driver object for building the dungeon
     """
 
-    def __init__(self, width, height, room_min=3, edge_min=1, max_depth=4):
-        self.width = width
-        self.height = height
+    def __init__(self, x_max, y_max, room_min=3, edge_min=1, max_depth=4):
+        self.x_max = x_max
+        self.y_max = y_max
         self.room_min = room_min
         self.edge_min = edge_min
         self.max_depth = max_depth
-        self.matrix = [['#' for _ in range(width)] for _ in range(height)]
+        self.matrix = [['#' for _ in range(x_max)] for _ in range(y_max)]
 
-    def get_tile(self, width, height):
+    def get_tile(self, point):
         """Wrap access to the internal map matrix
         """
-        return self.matrix[height][width]
+        print "Getting tile for %s" % repr(point)
+        return self.matrix[point.y][point.x]
 
-    def set_tile(self, width, height, glyph="."):
+    def set_tile(self, point, glyph="."):
         """Wrap access to the internal map matrix
         """
-        self.matrix[height][width] = glyph
+        self.matrix[point.y][point.x] = glyph
 
     def __str__(self):
         retval = ''
@@ -57,44 +59,51 @@ class Dungeon(object):
 
         # we now have a room height and width that fit within our bounding box.
         # Just need to decide where to put the top left corner
-        v_start = random.randint(bounding_box.top + self.edge_min,
+        y_start = random.randint(bounding_box.top + self.edge_min,
                                  bounding_box.bottom - height)
-        h_start = random.randint(bounding_box.left + self.edge_min,
+        x_start = random.randint(bounding_box.left + self.edge_min,
                                  bounding_box.right - width)
-        room = Box(v_start, h_start, v_start + height - 1, h_start + width - 1)
-        for i in range(v_start, v_start + height):
-            for j in range(h_start, h_start + width):
-                self.set_tile(j, i)
+        room = Box(y_start, x_start, y_start + height - 1, x_start + width - 1)
+        for i in range(y_start, y_start + height):
+            for j in range(x_start, x_start + width):
+                self.set_tile(Point(j, i))
         return room
 
-    def line_connection(self, start_row, start_col, is_vertical=True,
+    def line_connection(self, start_y, start_x, is_horizontal,
                         glyph='.'):
         """Connect two sections of the maze using a straight line.  The
         corridor will extend straight up and down (or left and right, depending
         on the :param is_vertical: setting) until it hits a non-wall tile.
         """
-        if is_vertical:
-            # Extend up
-            row = start_row
-            while self.get_tile(start_col, row) == '#':
-                self.set_tile(start_col, row, glyph=glyph)
-                row -= 1
-            # Extend down
-            row = start_row + 1
-            while self.get_tile(start_col, row) == '#':
-                self.set_tile(start_col, row, glyph=glyph)
-                row += 1
+        if is_horizontal:
+            # Horizontal splitting line need a vertical (i.e. constant Y)
+            # connecting line.  The connecting line is always perpendicular to
+            # the splitting line
+            x = start_x
+            while self.get_tile(Point(x, start_y)) == '#':
+                self.set_tile(Point(x, start_y), glyph=glyph)
+                x -= 1
+                if x == -1:
+                    break
+            x = start_x + 1
+            while self.get_tile(Point(x, start_y)) == '#':
+                self.set_tile(Point(x, start_y), glyph=glyph)
+                x += 1
+                if x == self.x_max:
+                    break
         else:
-            # Extend left
-            col = start_col
-            while self.get_tile(col, start_row) == '#':
-                self.set_tile(col, start_row, glyph=glyph)
-                col -= 1
-            # Extend right
-            col = start_col + 1
-            while self.get_tile(col, start_row) == '#':
-                self.set_tile(col, start_row, glyph=glyph)
-                col += 1
+            y = start_y
+            while self.get_tile(Point(start_x, y)) == '#':
+                self.set_tile(Point(start_x, y), glyph=glyph)
+                y -= 1
+                if y == -1:
+                    break
+            y = start_y + 1
+            while self.get_tile(Point(start_x, y)) == '#':
+                self.set_tile(Point(start_x, y), glyph=glyph)
+                y += 1
+                if y == self.y_max:
+                    break
 
     def mk_dungeon(self, bounding_box, depth=0):
         """Recursively generate the dungeon, building rooms as we go down and
@@ -108,17 +117,7 @@ class Dungeon(object):
                     > bounding_box.bottom - edge_buffer)
                 or (bounding_box.left + edge_buffer
                     > bounding_box.right - edge_buffer)):
-            tries = 0
-            while tries < 3:
-                try:
-                    room = self.mk_room(bounding_box)
-                except ValueError:
-                    tries += 1
-                    room = None
-                else:
-                    break
-            if tries == 3:
-                print "Gave up trying to make a room"
+            room = self.mk_room(bounding_box)
             return room
 
         split_dir = random.randint(0, 1)
@@ -158,10 +157,10 @@ class Dungeon(object):
             overlap_right = min(room_1.right, room_2.right)
             print "ol: %s, or: %s" % (overlap_left, overlap_right)
             if overlap_right >= overlap_left:
-                corridor_col = random.randint(overlap_left, overlap_right)
+                corridor_y = random.randint(overlap_left, overlap_right)
                 print("picked horizontal overlap point %s between %s and %s"
-                      % (corridor_col, room_1, room_2))
-                self.line_connection(split, corridor_col, is_vertical=True,
+                      % (corridor_y, room_1, room_2))
+                self.line_connection(split, corridor_y, is_horizontal=False,
                                      glyph='|')
             else:
                 print("No horizontal overlap between %s and %s"
@@ -171,15 +170,15 @@ class Dungeon(object):
             overlap_bottom = min(room_1.bottom, room_2.bottom)
             print "ot: %s, ob: %s" % (overlap_top, overlap_bottom)
             if overlap_bottom >= overlap_top:
-                corridor_row = random.randint(overlap_top, overlap_bottom)
+                corridor_x = random.randint(overlap_top, overlap_bottom)
                 print "picked vertical overlap point %s between %s and %s" % (
-                    corridor_row, room_1, room_2)
-                self.line_connection(corridor_row, split, is_vertical=False,
+                    corridor_x, room_1, room_2)
+                self.line_connection(corridor_x, split, is_horizontal=True,
                                      glyph='-')
             else:
                 print("No vertical overlap between %s and %s"
                       % (room_1, room_2))
-        # print self
+        print self
         return Box(
             min(room_1.top, room_2.top),
             min(room_1.left, room_2.left),
