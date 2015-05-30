@@ -69,20 +69,32 @@ class Dungeon(object):
                 self.set_tile(Point(j, i))
         return room
 
-    def line_connection(self, start_y, start_x, is_vertical,
-                        glyph='.'):
+    def line_connection(self, room_1, room_2, split, is_vertical):
         """Connect two sections of the maze using a straight line.  The
         corridor will extend straight up and down (or left and right, depending
         on the :param is_vertical: setting) until it hits a non-wall tile.
         """
         if is_vertical:
-            x = start_x
+            # Vertical splitting need a horizontal (i.e. constant Y) connecting
+            # line.  The conecting line is always perpendicular to the
+            # splitting line.
+            overlap_top = max(room_1.top, room_2.top)
+            overlap_bottom = min(room_1.bottom, room_2.bottom)
+            print "ot: %s, ob: %s" % (overlap_top, overlap_bottom)
+            if overlap_bottom < overlap_top:
+                print("No vertical overlap between %s and %s"
+                      % (room_1, room_2))
+                return None
+            start_y = random.randint(overlap_top, overlap_bottom)
+            print "picked vertical overlap point %s between %s and %s" % (
+                start_y, room_1, room_2)
+            x = split
             while self.get_tile(Point(x, start_y)) == '#':
                 self.set_tile(Point(x, start_y), glyph='-')
                 x -= 1
                 if x == -1:
                     break
-            x = start_x + 1
+            x = split + 1
             while self.get_tile(Point(x, start_y)) == '#':
                 self.set_tile(Point(x, start_y), glyph='-')
                 x += 1
@@ -92,13 +104,23 @@ class Dungeon(object):
             # Horizontal splitting line need a vertical (i.e. constant X)
             # connecting line.  The connecting line is always perpendicular to
             # the splitting line
-            y = start_y
+            overlap_left = max(room_1.left, room_2.left)
+            overlap_right = min(room_1.right, room_2.right)
+            print "ol: %s, or: %s" % (overlap_left, overlap_right)
+            if overlap_right < overlap_left:
+                print("No horizontal overlap between %s and %s"
+                      % (room_1, room_2))
+                return None
+            start_x = random.randint(overlap_left, overlap_right)
+            print("picked horizontal overlap point %s between %s and %s"
+                  % (start_x, room_1, room_2))
+            y = split
             while self.get_tile(Point(start_x, y)) == '#':
                 self.set_tile(Point(start_x, y), glyph='|')
                 y -= 1
                 if y == -1:
                     break
-            y = start_y + 1
+            y = split + 1
             while self.get_tile(Point(start_x, y)) == '#':
                 self.set_tile(Point(start_x, y), glyph='|')
                 y += 1
@@ -149,34 +171,8 @@ class Dungeon(object):
         # First see if they share an edge
 
         # print self
-        # TODO: refactor this - two if clauses are basically the same, just
-        # top/bottom and left/right are swapped.  Named tuple implementation
-        # _should_ make it easy to parameterize that.
-        if is_vertical:
-            overlap_top = max(room_1.top, room_2.top)
-            overlap_bottom = min(room_1.bottom, room_2.bottom)
-            print "ot: %s, ob: %s" % (overlap_top, overlap_bottom)
-            if overlap_bottom >= overlap_top:
-                corridor_x = random.randint(overlap_top, overlap_bottom)
-                print "picked vertical overlap point %s between %s and %s" % (
-                    corridor_x, room_1, room_2)
-                self.line_connection(corridor_x, split, is_vertical, glyph='-')
-            else:
-                print("No vertical overlap between %s and %s"
-                      % (room_1, room_2))
-        else:
-            overlap_left = max(room_1.left, room_2.left)
-            overlap_right = min(room_1.right, room_2.right)
-            print "ol: %s, or: %s" % (overlap_left, overlap_right)
-            if overlap_right >= overlap_left:
-                corridor_y = random.randint(overlap_left, overlap_right)
-                print("picked horizontal overlap point %s between %s and %s"
-                      % (corridor_y, room_1, room_2))
-                self.line_connection(split, corridor_y, is_vertical, glyph='|')
-            else:
-                print("No horizontal overlap between %s and %s"
-                      % (room_1, room_2))
-        print self
+        self.line_connection(room_1, room_2, split, is_vertical)
+        # print self
         return Box(
             min(room_1.top, room_2.top),
             min(room_1.left, room_2.left),
