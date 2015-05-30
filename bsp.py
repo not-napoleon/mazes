@@ -82,9 +82,8 @@ class Dungeon(object):
             overlap_bottom = min(room_1.bottom, room_2.bottom)
             print "ot: %s, ob: %s" % (overlap_top, overlap_bottom)
             if overlap_bottom < overlap_top:
-                print("No vertical overlap between %s and %s"
-                      % (room_1, room_2))
-                return None
+                raise ValueError("No vertical overlap between %s and %s"
+                                 % (room_1, room_2))
             start_y = random.randint(overlap_top, overlap_bottom)
             print "picked vertical overlap point %s between %s and %s" % (
                 start_y, room_1, room_2)
@@ -92,14 +91,10 @@ class Dungeon(object):
             while self.get_tile(Point(x, start_y)) == '#':
                 self.set_tile(Point(x, start_y), glyph='-')
                 x -= 1
-                if x == -1:
-                    break
             x = split + 1
             while self.get_tile(Point(x, start_y)) == '#':
                 self.set_tile(Point(x, start_y), glyph='-')
                 x += 1
-                if x == self.x_max:
-                    break
         else:
             # Horizontal splitting line need a vertical (i.e. constant X)
             # connecting line.  The connecting line is always perpendicular to
@@ -108,9 +103,8 @@ class Dungeon(object):
             overlap_right = min(room_1.right, room_2.right)
             print "ol: %s, or: %s" % (overlap_left, overlap_right)
             if overlap_right < overlap_left:
-                print("No horizontal overlap between %s and %s"
-                      % (room_1, room_2))
-                return None
+                raise ValueError("No horizontal overlap between %s and %s"
+                                 % (room_1, room_2))
             start_x = random.randint(overlap_left, overlap_right)
             print("picked horizontal overlap point %s between %s and %s"
                   % (start_x, room_1, room_2))
@@ -118,14 +112,39 @@ class Dungeon(object):
             while self.get_tile(Point(start_x, y)) == '#':
                 self.set_tile(Point(start_x, y), glyph='|')
                 y -= 1
-                if y == -1:
-                    break
             y = split + 1
             while self.get_tile(Point(start_x, y)) == '#':
                 self.set_tile(Point(start_x, y), glyph='|')
                 y += 1
-                if y == self.y_max:
-                    break
+
+    def bend_connection(self, room_1, room_2):
+        """Make a connection with a right angle in it - used when the two
+        rooms don't share a facing side
+        """
+        bend_point = Point(random.randint(room_1.left, room_1.right),
+                           random.randint(room_2.top, room_2.bottom))
+        if room_1.bottom < room_2.top:
+            draw_point = bend_point
+            while self.get_tile(draw_point) == '#':
+                self.set_tile(draw_point, glyph='|')
+                draw_point = Point(draw_point.x, draw_point.y-1)
+        else:
+            draw_point = bend_point
+            while self.get_tile(draw_point) == '#':
+                self.set_tile(draw_point, glyph='|')
+                draw_point = Point(draw_point.x, draw_point.y+1)
+        if room_1.left < room_2.right:
+            # Move off our starting point, so we start on a wall
+            draw_point = Point(bend_point.x+1, bend_point.y)
+            while self.get_tile(draw_point) == '#':
+                self.set_tile(draw_point, glyph='-')
+                draw_point = Point(draw_point.x+1, draw_point.y)
+        else:
+            # Move off our starting point, so we start on a wall
+            draw_point = Point(bend_point.x-1, bend_point.y)
+            while self.get_tile(draw_point) == '#':
+                self.set_tile(draw_point, glyph='-')
+                draw_point = Point(draw_point.x-1, draw_point.y)
 
     def mk_dungeon(self, bounding_box, depth=0):
         """Recursively generate the dungeon, building rooms as we go down and
@@ -144,16 +163,13 @@ class Dungeon(object):
 
         is_vertical = bool(random.randint(0, 1))
         if is_vertical:
-            print "splitting vertically"
             split = random.randint(bounding_box.left + edge_buffer,
                                    bounding_box.right - edge_buffer)
             box_1 = Box(bounding_box.top, bounding_box.left,
                         bounding_box.bottom, split)
             box_2 = Box(bounding_box.top, split, bounding_box.bottom,
                         bounding_box.right)
-
         else:
-            print "splitting horizontally"
             # horizontal split
             split = random.randint(bounding_box.top + edge_buffer,
                                    bounding_box.bottom - edge_buffer)
@@ -171,7 +187,10 @@ class Dungeon(object):
         # First see if they share an edge
 
         # print self
-        self.line_connection(room_1, room_2, split, is_vertical)
+        try:
+            self.line_connection(room_1, room_2, split, is_vertical)
+        except ValueError:
+            self.bend_connection(room_1, room_2)
         # print self
         return Box(
             min(room_1.top, room_2.top),
