@@ -67,6 +67,35 @@ class Dungeon(object):
                 self.set_tile(j, i)
         return room
 
+    def line_connection(self, start_row, start_col, is_vertical=True,
+                        glyph='.'):
+        """Connect two sections of the maze using a straight line.  The
+        corridor will extend straight up and down (or left and right, depending
+        on the :param is_vertical: setting) until it hits a non-wall tile.
+        """
+        if is_vertical:
+            # Extend up
+            row = start_row
+            while self.get_tile(start_col, row) == '#':
+                self.set_tile(start_col, row, glyph=glyph)
+                row -= 1
+            # Extend down
+            row = start_row + 1
+            while self.get_tile(start_col, row) == '#':
+                self.set_tile(start_col, row, glyph=glyph)
+                row += 1
+        else:
+            # Extend left
+            col = start_col
+            while self.get_tile(col, start_row) == '#':
+                self.set_tile(col, start_row, glyph=glyph)
+                col -= 1
+            # Extend right
+            col = start_col + 1
+            while self.get_tile(col, start_row) == '#':
+                self.set_tile(col, start_row, glyph=glyph)
+                col += 1
+
     def mk_dungeon(self, bounding_box, depth=0):
         """Recursively generate the dungeon, building rooms as we go down and
         connecting them as we go up
@@ -132,21 +161,8 @@ class Dungeon(object):
                 corridor_col = random.randint(overlap_left, overlap_right)
                 print("picked horizontal overlap point %s between %s and %s"
                       % (corridor_col, room_1, room_2))
-                started = False
-                start = room_1.bottom
-                while self.get_tile(corridor_col, start) == "#":
-                    start -= 1
-                end = room_2.top
-                while self.get_tile(corridor_col, end) == "#":
-                    end += 1
-                for i in range(start, end):
-                    if self.get_tile(corridor_col, i) == '#':
-                        started = True
-                        self.set_tile(corridor_col, i, "|")
-                    elif started:
-                        # If we started drawing and now hit a non-wall, we're
-                        # done
-                        break
+                self.line_connection(split, corridor_col, is_vertical=True,
+                                     glyph='|')
             else:
                 print("No horizontal overlap between %s and %s"
                       % (room_1, room_2))
@@ -158,24 +174,8 @@ class Dungeon(object):
                 corridor_row = random.randint(overlap_top, overlap_bottom)
                 print "picked vertical overlap point %s between %s and %s" % (
                     corridor_row, room_1, room_2)
-                started = False
-                # rooms may be a compound box, in which case room_1.right
-                # doesn't border an open tile.  To correct for this, move the
-                # start left until we find a non-wall tile.
-                start = room_1.right
-                while self.get_tile(start, corridor_row) == "#":
-                    start -= 1
-                end = room_2.left
-                while self.get_tile(end, corridor_row) == "#":
-                    end += 1
-                for i in range(start, end):
-                    if self.get_tile(i, corridor_row) == '#':
-                        started = True
-                        self.set_tile(i, corridor_row, "-")
-                    elif started:
-                        # If we started drawing and now hit a non-wall, we're
-                        # done
-                        break
+                self.line_connection(corridor_row, split, is_vertical=False,
+                                     glyph='-')
             else:
                 print("No vertical overlap between %s and %s"
                       % (room_1, room_2))
