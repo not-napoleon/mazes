@@ -129,20 +129,20 @@ class Dungeon(object):
             overlap_right = min(room_1.right, room_2.right)
             print "ol: %s, or: %s" % (overlap_left, overlap_right)
             if overlap_right >= overlap_left:
-                corridor_row = random.randint(overlap_left, overlap_right)
+                corridor_col = random.randint(overlap_left, overlap_right)
                 print("picked horizontal overlap point %s between %s and %s"
-                      % (corridor_row, room_1, room_2))
+                      % (corridor_col, room_1, room_2))
                 started = False
                 start = room_1.bottom
-                while self.get_tile(corridor_row, start) == "#":
+                while self.get_tile(corridor_col, start) == "#":
                     start -= 1
                 end = room_2.top
-                while self.get_tile(corridor_row, end) == "#":
+                while self.get_tile(corridor_col, end) == "#":
                     end += 1
                 for i in range(start, end):
-                    if self.get_tile(corridor_row, i) == '#':
+                    if self.get_tile(corridor_col, i) == '#':
                         started = True
-                        self.set_tile(corridor_row, i, "|")
+                        self.set_tile(corridor_col, i, "|")
                     elif started:
                         # If we started drawing and now hit a non-wall, we're
                         # done
