@@ -4,11 +4,8 @@ Generate dungeon using BSP algorithm
 
 import random
 import sys
-from collections import namedtuple
 
-
-Box = namedtuple('Box', ['top', 'left', 'bottom', 'right'])
-Point = namedtuple('Point', ['x', 'y'])
+from utils import Box, Point
 
 
 class Dungeon(object):
