@@ -28,20 +28,28 @@ class WalledMatrix(object):
 
     def carve(self, point, direction):
         print "Carving %s from %s" % (direction, repr(point))
-        # As a convenient side effect, this will raise an index error if we try
-        # to carve off the grid
         if direction == 'U':
+            if point.y == 0:
+                raise IndexError
             self._matrix[point.y][point.x].top = True
             self._matrix[point.y - 1][point.x].bottom = True
         elif direction == 'D':
+            if point.y == self._y_max:
+                raise IndexError
             self._matrix[point.y][point.x].bottom = True
             self._matrix[point.y + 1][point.x].top = True
         elif direction == 'L':
+            if point.x == 0:
+                raise IndexError
             self._matrix[point.y][point.x].left = True
             self._matrix[point.y][point.x - 1].right = True
         elif direction == 'R':
+            if point.x == self._x_max:
+                raise IndexError
             self._matrix[point.y][point.x].right = True
             self._matrix[point.y][point.x + 1].left = True
+        else:
+            raise ValueError("Unknown direction %s" % str(direction))
 
     def get_walls(self, point):
         """Interface between x,y points and row-major grid
@@ -69,4 +77,9 @@ class WalledMatrix(object):
             retval += '\n'
         return retval
 
-
+    def __iter__(self):
+        """Iterate through the cells of the matrix
+        """
+        for y, row in enumerate(self._matrix):
+            for x, cell in enumerate(row):
+                yield (Point(x, y), cell)
