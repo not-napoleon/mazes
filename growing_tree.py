@@ -33,6 +33,10 @@ class GrowingTreeMaze(object):
         # space to work with.
         self._matrix = WalledMatrix(self._x_max // 2, self._y_max // 2)
 
+    @property
+    def matrix(self):
+        return self._matrix
+
     def get_uncarved_neighbors(self, point):
         """Return a list of directions (suitable for input into carve) of
         cells neighboring the given point that have not been carved.
